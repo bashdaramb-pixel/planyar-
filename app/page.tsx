@@ -18,7 +18,7 @@ const modules: Module[] = [
 
 const navItems = ["Dashboard", "Projects", "Products", "Calculators", "Settings"];
 
-function Field({ label, value, onChange, unit, min = 0, step = 1 }: {
+function Field({ label, value, onChange, unit, min = 0, max, step = 1 }: {
   label: string; value: number; onChange: (value: number) => void; unit?: string; min?: number; max?: number; step?: number;
 }) {
   return <label className="block text-sm text-slate-300">{label}
