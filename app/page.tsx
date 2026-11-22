@@ -19,11 +19,11 @@ const modules: Module[] = [
 const navItems = ["Dashboard", "Projects", "Products", "Calculators", "Settings"];
 
 function Field({ label, value, onChange, unit, min = 0, step = 1 }: {
-  label: string; value: number; onChange: (value: number) => void; unit?: string; min?: number; step?: number;
+  label: string; value: number; onChange: (value: number) => void; unit?: string; min?: number; max?: number; step?: number;
 }) {
   return <label className="block text-sm text-slate-300">{label}
     <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950 px-3">
-      <input className="w-full border-0 bg-transparent px-0 py-3 text-white outline-none" type="number" min={min} step={step} value={value}
+      <input className="w-full border-0 bg-transparent px-0 py-3 text-white outline-none" type="number" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || 0))} />
       {unit && <span className="text-xs text-slate-500">{unit}</span>}
     </div>
