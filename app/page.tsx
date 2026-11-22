@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Project = { id: number; name: string; client: string; system: string; status: string };
 type Module = { name: string; icon: string; desc: string };
@@ -33,9 +33,20 @@ function Field({ label, value, onChange, unit, min = 0, max, step = 1 }: {
 export default function Home() {
   const [section, setSection] = useState("Dashboard");
   const [activeModule, setActiveModule] = useState("CCTV");
-  const [projects, setProjects] = useState<Project[]>([
-    { id: 1, name: "Sample CCTV Project", client: "Demo Client", system: "CCTV", status: "Planning" },
-  ]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectError, setProjectError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/projects")
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not load projects.");
+        setProjects(data.projects);
+      })
+      .catch((error) => setProjectError(error.message || "Could not load projects."))
+      .finally(() => setProjectsLoading(false));
+  }, []);
   const [projectName, setProjectName] = useState("");
   const [client, setClient] = useState("");
   const [system, setSystem] = useState("CCTV");
@@ -65,11 +76,23 @@ export default function Home() {
 
   const total = quoteItems.reduce((sum, item) => sum + item.qty * item.price, 0);
 
-  function addProject(e: React.FormEvent) {
+  async function addProject(e: React.FormEvent) {
     e.preventDefault();
     if (!projectName.trim()) return;
-    setProjects((current) => [{ id: Date.now(), name: projectName.trim(), client: client.trim() || "Not specified", system, status: "Planning" }, ...current]);
-    setProjectName(""); setClient(""); setSection("Projects");
+    setProjectError("");
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: projectName.trim(), client: client.trim() || "Not specified", system }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not save project.");
+      setProjects((current) => [data.project, ...current]);
+      setProjectName(""); setClient(""); setSection("Projects");
+    } catch (error) {
+      setProjectError(error instanceof Error ? error.message : "Could not save project.");
+    }
   }
 
   function addQuoteItem(e: React.FormEvent) {
@@ -124,7 +147,8 @@ export default function Home() {
             <button className={button} type="submit">+ Create project</button>
           </form>
           <div className={panel}><h3 className="mb-4 text-xl font-bold">Project list <span className="text-sm font-normal text-slate-500">({projects.length})</span></h3>
-            <div className="space-y-3">{projects.map((p) => <div key={p.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="font-semibold">{p.name}</h4><p className="mt-1 text-sm text-slate-400">{p.client} · {p.system}</p></div><span className="rounded-full bg-amber-950 px-3 py-1 text-xs text-amber-300">{p.status}</span></div></div>)}</div>
+            {projectError && <p role="alert" className="mb-3 rounded-lg bg-rose-950/60 p-3 text-sm text-rose-300">{projectError}</p>}
+            {projectsLoading ? <p className="text-sm text-slate-400">Loading projects…</p> : projects.length === 0 ? <p className="text-sm text-slate-400">No projects saved yet. Create your first project.</p> : <div className="space-y-3">{projects.map((p) => <div key={p.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="font-semibold">{p.name}</h4><p className="mt-1 text-sm text-slate-400">{p.client} · {p.system}</p></div><span className="rounded-full bg-amber-950 px-3 py-1 text-xs text-amber-300">{p.status}</span></div></div>)}</div>}
           </div>
         </div>}
 
