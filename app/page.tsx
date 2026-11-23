@@ -64,14 +64,16 @@ export default function Home() {
 
   const ups = useMemo(() => {
     const energy = loadKw * backupHours;
-    const batteryKwh = energy / (efficiency / 100);
-    const capacityAh = (batteryKwh * 1000) / voltage;
+    const batteryKwh = efficiency > 0 ? energy / (efficiency / 100) : 0;
+    const capacityAh = voltage > 0 ? (batteryKwh * 1000) / voltage : 0;
     return { energy, batteryKwh, capacityAh };
   }, [loadKw, backupHours, voltage, efficiency]);
 
   const solar = useMemo(() => {
-    const arrayKw = dailyKwh / (sunHours * (losses / 100));
-    return { arrayKw, panelCount: Math.ceil((arrayKw * 1000) / panelW) };
+    const validSolarInputs = sunHours > 0 && losses > 0 && panelW > 0;
+    const arrayKw = validSolarInputs ? dailyKwh / (sunHours * (losses / 100)) : 0;
+    const panelCount = validSolarInputs ? Math.ceil((arrayKw * 1000) / panelW) : 0;
+    return { arrayKw, panelCount };
   }, [dailyKwh, sunHours, losses, panelW]);
 
   const total = quoteItems.reduce((sum, item) => sum + item.qty * item.price, 0);
