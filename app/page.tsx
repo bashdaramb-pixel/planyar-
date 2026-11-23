@@ -37,9 +37,33 @@ export default function Home() {
   const [studioTool, setStudioTool] = useState("Camera");
   const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
   const [nextDeviceId, setNextDeviceId] = useState(1);
+  const [studioLoaded, setStudioLoaded] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectError, setProjectError] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("planyar-2d-studio-v1");
+      if (saved) {
+        const parsed = JSON.parse(saved) as { devices?: PlacedDevice[]; nextDeviceId?: number };
+        if (Array.isArray(parsed.devices)) setPlacedDevices(parsed.devices);
+        if (typeof parsed.nextDeviceId === "number" && parsed.nextDeviceId > 0) setNextDeviceId(parsed.nextDeviceId);
+      }
+    } catch {
+      // Ignore damaged or unavailable local workspace data and start with an empty plan.
+    }
+    setStudioLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!studioLoaded) return;
+    try {
+      window.localStorage.setItem("planyar-2d-studio-v1", JSON.stringify({ devices: placedDevices, nextDeviceId }));
+    } catch {
+      // The drawing remains usable if browser storage is unavailable or full.
+    }
+  }, [placedDevices, nextDeviceId, studioLoaded]);
 
   useEffect(() => {
     fetch("/api/projects")
@@ -159,7 +183,7 @@ export default function Home() {
               {["Camera", "Wi-Fi AP", "Motion Sensor", "Door"].map((tool) => <button key={tool} type="button" onClick={() => setStudioTool(tool)} className={studioTool === tool ? button : secondary}>{tool}</button>)}
             </div>
           </div>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400"><span>Selected tool: <strong className="text-cyan-300">{studioTool}</strong></span><span>{placedDevices.length} placed device(s)</span></div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400"><span>Selected tool: <strong className="text-cyan-300">{studioTool}</strong></span><span>{placedDevices.length} placed device(s) · {studioLoaded ? "Auto-saved on this device" : "Loading saved plan…"}</span></div>
           <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#080f1d]">
             <svg viewBox="0 0 900 520" role="img" aria-label="Interactive 2D floor plan. Tap to place the selected device." onClick={placeStudioDevice} className="block h-auto w-full touch-manipulation" style={{ cursor: "crosshair" }}>
               <defs><pattern id="plan-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#233247" strokeWidth="1"/></pattern></defs>
@@ -180,7 +204,7 @@ export default function Home() {
             </svg>
           </div>
           <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => setPlacedDevices((items) => items.slice(0, -1))} disabled={placedDevices.length === 0}>Undo last</button><button type="button" className={secondary} onClick={() => setPlacedDevices([])} disabled={placedDevices.length === 0}>Clear devices</button></div>
-          <p className="mt-3 text-xs leading-5 text-amber-300/80">Prototype drawing workspace: placements are currently held in this browser session and are not yet saved to a project. Scale calibration, PDF/DWG import, wall editing, cable routing and coverage calculations are future steps.</p>
+          <p className="mt-3 text-xs leading-5 text-amber-300/80">Your device layout is automatically saved in this browser on this device. It is not yet linked to a project or synced to the cloud. Scale calibration, PDF/DWG import, wall editing, cable routing and coverage calculations are future steps.</p>
         </section>}
 
         {section === "Projects" && <div className="grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
