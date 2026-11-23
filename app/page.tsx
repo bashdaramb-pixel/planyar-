@@ -45,6 +45,10 @@ export default function Home() {
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [catalogError, setCatalogError] = useState("");
   const [catalogBusy, setCatalogBusy] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productSearchResults, setProductSearchResults] = useState<{ title: string; url: string; description: string; content: string }[]>([]);
+  const [productSearchBusy, setProductSearchBusy] = useState(false);
+  const [productSearchError, setProductSearchError] = useState("");
   const [catalogName, setCatalogName] = useState("");
   const [catalogSku, setCatalogSku] = useState("");
   const [catalogCategory, setCatalogCategory] = useState("CCTV");
@@ -223,6 +227,31 @@ export default function Home() {
     } catch { setCatalogError("Could not place this product. Please try dragging it again."); }
   }
 
+  async function searchWebProducts(e: React.FormEvent) {
+    e.preventDefault();
+    if (productSearchQuery.trim().length < 2) return;
+    setProductSearchBusy(true); setProductSearchError(""); setProductSearchResults([]);
+    try {
+      const response = await fetch("/api/product-search", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: productSearchQuery.trim() }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Web search failed.");
+      setProductSearchResults(data.results || []);
+      if (!data.results?.length) setProductSearchError("No matching results were found. Try a different model or product name.");
+    } catch (error) { setProductSearchError(error instanceof Error ? error.message : "Web search failed."); }
+    finally { setProductSearchBusy(false); }
+  }
+
+  async function addWebSearchProduct(result: { title: string; url: string; description: string; content: string }) {
+    setCatalogBusy(true); setProductSearchError("");
+    try {
+      const response = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: result.title, category: catalogCategory, specifications: { source_url: result.url, web_summary: result.description, extracted_content: result.content.slice(0, 3500) }, datasheet_url: result.url, currency: "USD", unit_price: 0 }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not add product.");
+      setCatalog((items) => [data.products[0], ...items.filter((item) => item.id !== data.products[0].id)]);
+      setProductSearchError("Added to Product Library. Review the product details and complete its model, SKU and price.");
+    } catch (error) { setProductSearchError(error instanceof Error ? error.message : "Could not add product."); }
+    finally { setCatalogBusy(false); }
+  }
   const panel = "rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-lg shadow-black/10";
   const button = "rounded-xl bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300";
   const secondary = "rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-slate-200 hover:border-cyan-400";
@@ -319,6 +348,13 @@ export default function Home() {
         </div>}
 
         {section === "Products" && <div className="space-y-5">
+          <section className={panel}>
+            <div className="mb-4"><p className="text-xs font-bold uppercase tracking-widest text-cyan-300">AI Product Search</p><h3 className="mt-1 text-xl font-bold">Search products across the web</h3><p className="mt-1 text-sm text-slate-400">Search by product name, model or technical requirement. Review the source before adding a result to your library.</p></div>
+            <form onSubmit={searchWebProducts} className="flex flex-col gap-2 sm:flex-row"><input value={productSearchQuery} onChange={(e) => setProductSearchQuery(e.target.value)} className="min-w-0 flex-1" placeholder="e.g. Hikvision 8MP IP camera, 48V LiFePO4 battery…" /><button className={button} type="submit" disabled={productSearchBusy || productSearchQuery.trim().length < 2}>{productSearchBusy ? "Searching…" : "Search the web"}</button></form>
+            {productSearchError && <p role="status" className="mt-3 rounded-lg border border-cyan-900 bg-cyan-950/40 p-3 text-sm text-cyan-200">{productSearchError}</p>}
+            {productSearchResults.length > 0 && <div className="mt-4 grid gap-3 lg:grid-cols-2">{productSearchResults.map((result, index) => <article key={result.url + index} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><h4 className="font-semibold">{result.title}</h4>{result.description && <p className="mt-2 text-sm leading-6 text-slate-400">{result.description}</p>}<a href={result.url} target="_blank" rel="noreferrer" className="mt-3 block break-all text-xs text-cyan-300 hover:text-cyan-100">{result.url}</a><button type="button" disabled={catalogBusy} onClick={() => void addWebSearchProduct(result)} className={secondary + " mt-3"}>+ Add to PlanYar</button></article>)}</div>}
+            <p className="mt-3 text-xs text-slate-500">Search results come from external web pages. Verify model numbers, specifications and prices with the original source before using them in a project.</p>
+          </section>
           <div className="grid gap-5 lg:grid-cols-2">
             <form onSubmit={saveCatalogProduct} className={panel}>
               <div className="mb-4"><p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Product intelligence</p><h3 className="mt-1 text-xl font-bold">Add to product catalog</h3><p className="mt-1 text-sm text-slate-400">Save technical products for reuse in future project quotations.</p></div>
