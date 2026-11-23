@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     await ensureProductsTable(pool);
     const inputs = Array.isArray(body.products) ? body.products : [body];
     if (!inputs.length || inputs.length > 500) return NextResponse.json({ error: "Submit between 1 and 500 products per import." }, { status: 400 });
-    const normalized = inputs.map((item) => normalizeProduct(item as Record<string, unknown>));
+    const normalized = (inputs as unknown[]).map((item: unknown) => normalizeProduct(item as Record<string, unknown>));
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
