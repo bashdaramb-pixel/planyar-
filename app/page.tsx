@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Project = { id: number; name: string; client: string; system: string; status: string };
 type Module = { name: string; icon: string; desc: string };
-type PlacedDevice = { id: number; kind: string; x: number; y: number };
+type PlacedDevice = { id: number; kind: string; x: number; y: number; productId?: number; productName?: string; model?: string };
 type CatalogProduct = { id: number; sku: string | null; name: string; category: string; brand: string; model: string; unit_price: string | number; currency: string; datasheet_url: string; image_url: string };
 
 const modules: Module[] = [
@@ -74,6 +74,15 @@ export default function Home() {
       // The drawing remains usable if browser storage is unavailable or full.
     }
   }, [placedDevices, nextDeviceId, studioLoaded]);
+
+  useEffect(() => {
+    if (section !== "Products" && section !== "2D Design Studio") return;
+    fetch("/api/products").then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load products.");
+      setCatalog(data.products || []);
+    }).catch((error) => setCatalogError(error.message || "Could not load products."));
+  }, [section]);
 
   useEffect(() => {
     fetch("/api/projects")
@@ -200,6 +209,20 @@ export default function Home() {
     } finally { setCatalogBusy(false); }
   }
 
+  function dropCatalogProduct(event: React.DragEvent<SVGSVGElement>) {
+    event.preventDefault();
+    const raw = event.dataTransfer.getData("application/planyar-product");
+    if (!raw) return;
+    try {
+      const product = JSON.parse(raw) as CatalogProduct;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const x = Math.max(24, Math.min(876, ((event.clientX - bounds.left) / bounds.width) * 900));
+      const y = Math.max(24, Math.min(496, ((event.clientY - bounds.top) / bounds.height) * 520));
+      setPlacedDevices((items) => [...items, { id: nextDeviceId, kind: product.category || "Device", x, y, productId: product.id, productName: product.name, model: product.model }]);
+      setNextDeviceId((id) => id + 1);
+    } catch { setCatalogError("Could not place this product. Please try dragging it again."); }
+  }
+
   const panel = "rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-lg shadow-black/10";
   const button = "rounded-xl bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300";
   const secondary = "rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-slate-200 hover:border-cyan-400";
@@ -238,14 +261,14 @@ export default function Home() {
 
         {section === "2D Design Studio" && <section className={panel}>
           <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-            <div><p className="text-xs font-bold uppercase tracking-[.2em] text-cyan-300">PlanYar workspace</p><h3 className="mt-1 text-2xl font-bold">2D Design Studio</h3><p className="mt-1 text-sm text-slate-400">Choose a device, then tap the drawing area to place it</p></div>
+            <div><p className="text-xs font-bold uppercase tracking-[.2em] text-cyan-300">PlanYar workspace</p><h3 className="mt-1 text-2xl font-bold">2D Design Studio</h3><p className="mt-1 text-sm text-slate-400">Drag a product from the library onto the plan, or choose a basic tool and tap to place it</p></div>
             <div className="flex flex-wrap gap-2">
               {["Camera", "Wi-Fi AP", "Motion Sensor", "Door"].map((tool) => <button key={tool} type="button" onClick={() => setStudioTool(tool)} className={studioTool === tool ? button : secondary}>{tool}</button>)}
             </div>
           </div>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400"><span>Selected tool: <strong className="text-cyan-300">{studioTool}</strong></span><span>{placedDevices.length} placed device(s) · {studioLoaded ? "Auto-saved on this device" : "Loading saved plan…"}</span></div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400"><span>Drag products from the Product Library below onto the drawing. Selected tool: <strong className="text-cyan-300">{studioTool}</strong></span><span>{placedDevices.length} placed device(s) · {studioLoaded ? "Auto-saved on this device" : "Loading saved plan…"}</span></div>
           <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#080f1d]">
-            <svg viewBox="0 0 900 520" role="img" aria-label="Interactive 2D floor plan. Tap to place the selected device." onClick={placeStudioDevice} className="block h-auto w-full touch-manipulation" style={{ cursor: "crosshair" }}>
+            <svg viewBox="0 0 900 520" role="img" aria-label="Interactive 2D floor plan. Tap to place the selected device." onClick={placeStudioDevice} onDragOver={(event) => event.preventDefault()} onDrop={dropCatalogProduct} className="block h-auto w-full touch-manipulation" style={{ cursor: "crosshair" }}>
               <defs><pattern id="plan-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#233247" strokeWidth="1"/></pattern></defs>
               <rect width="900" height="520" fill="url(#plan-grid)"/>
               <rect x="110" y="75" width="680" height="370" fill="#0d1b2b" fillOpacity=".7" stroke="#94a3b8" strokeWidth="8"/>
@@ -258,12 +281,13 @@ export default function Home() {
               {placedDevices.map((device) => <g key={device.id} transform={`translate(${device.x} ${device.y})`} pointerEvents="none">
                 <circle r="17" fill={device.kind === "Camera" ? "#083344" : device.kind === "Wi-Fi AP" ? "#312e81" : device.kind === "Door" ? "#713f12" : "#14532d"} stroke={device.kind === "Camera" ? "#22d3ee" : device.kind === "Wi-Fi AP" ? "#a5b4fc" : device.kind === "Door" ? "#fbbf24" : "#86efac"} strokeWidth="2"/>
                 <text y="5" textAnchor="middle" fontSize="15" fill="white">{device.kind === "Camera" ? "C" : device.kind === "Wi-Fi AP" ? "W" : device.kind === "Door" ? "D" : "M"}</text>
-                <text y="31" textAnchor="middle" fontSize="10" fill="#e2e8f0">{device.kind} #{device.id}</text>
+                <text y="31" textAnchor="middle" fontSize="10" fill="#e2e8f0">{device.productName ? `${device.productName}${device.model ? ` · ${device.model}` : ""}` : `${device.kind} #${device.id}`}</text>
               </g>)}
               <text x="450" y="500" fill="#64748b" fontSize="12" textAnchor="middle">TAP ANYWHERE INSIDE THE PLAN TO PLACE A DEVICE</text>
             </svg>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => setPlacedDevices((items) => items.slice(0, -1))} disabled={placedDevices.length === 0}>Undo last</button><button type="button" className={secondary} onClick={() => setPlacedDevices([])} disabled={placedDevices.length === 0}>Clear devices</button></div>
+          <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => setSection("Products")}>Open Product Library</button><button type="button" className={secondary} onClick={() => setPlacedDevices((items) => items.slice(0, -1))} disabled={placedDevices.length === 0}>Undo last</button><button type="button" className={secondary} onClick={() => setPlacedDevices([])} disabled={placedDevices.length === 0}>Clear devices</button></div>
+          <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="mb-3 flex items-center justify-between gap-2"><h4 className="font-semibold text-cyan-200">Drag-and-drop product library</h4><span className="text-xs text-slate-500">{catalog.length} products</span></div>{catalog.length === 0 ? <p className="text-sm text-slate-400">Add products in Products first. They will appear here for placement.</p> : <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{catalog.map((product) => <div key={product.id} draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = "copy"; event.dataTransfer.setData("application/planyar-product", JSON.stringify(product)); }} className="cursor-grab rounded-lg border border-slate-700 bg-slate-900 p-3 active:cursor-grabbing"><p className="text-sm font-semibold">{product.name}</p><p className="mt-1 text-xs text-slate-400">{[product.brand, product.model].filter(Boolean).join(" · ") || product.category}</p><p className="mt-2 text-xs text-cyan-300">⠿ Drag onto drawing</p></div>)}</div>}</div>
           <p className="mt-3 text-xs leading-5 text-amber-300/80">Your device layout is automatically saved in this browser on this device. It is not yet linked to a project or synced to the cloud. Scale calibration, PDF/DWG import, wall editing, cable routing and coverage calculations are future steps.</p>
         </section>}
 
