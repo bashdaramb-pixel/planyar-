@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type Project = { id: number; name: string; client: string; system: string; status: string };
 type Module = { name: string; icon: string; desc: string };
 type PlacedDevice = { id: number; kind: string; x: number; y: number };
+type CatalogProduct = { id: number; sku: string | null; name: string; category: string; brand: string; model: string; unit_price: string | number; currency: string; datasheet_url: string; image_url: string };
 
 const modules: Module[] = [
   { name: "CCTV", icon: "📹", desc: "Camera layout and coverage planning" },
@@ -41,6 +42,15 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectError, setProjectError] = useState("");
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [catalogName, setCatalogName] = useState("");
+  const [catalogSku, setCatalogSku] = useState("");
+  const [catalogCategory, setCatalogCategory] = useState("CCTV");
+  const [catalogBrand, setCatalogBrand] = useState("");
+  const [catalogModel, setCatalogModel] = useState("");
+  const [catalogPrice, setCatalogPrice] = useState(0);
 
   useEffect(() => {
     try {
@@ -140,6 +150,56 @@ export default function Home() {
     setProductName(""); setProductPrice(0);
   }
 
+  async function saveCatalogProduct(e: React.FormEvent) {
+    e.preventDefault();
+    setCatalogBusy(true); setCatalogError("");
+    try {
+      const response = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        name: catalogName, sku: catalogSku, category: catalogCategory, brand: catalogBrand, model: catalogModel, unit_price: catalogPrice, currency: "USD"
+      }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not save product.");
+      setCatalog((items) => [data.products[0], ...items.filter((item) => item.id !== data.products[0].id)]);
+      setCatalogName(""); setCatalogSku(""); setCatalogBrand(""); setCatalogModel(""); setCatalogPrice(0);
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : "Could not save product.");
+    } finally { setCatalogBusy(false); }
+  }
+
+  async function importProductCsv(file?: File) {
+    if (!file) return;
+    setCatalogBusy(true); setCatalogError("");
+    try {
+      const text = await file.text();
+      const lines = text.replace(/^\\uFEFF/, "").split(/\\r?\\n/).filter((line) => line.trim());
+      if (lines.length < 2) throw new Error("CSV must include a header row and at least one product.");
+      const parseRow = (line: string) => {
+        const cells: string[] = []; let value = ""; let quoted = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"' && line[i + 1] === '"' && quoted) { value += '"'; i++; }
+          else if (ch === '"') quoted = !quoted;
+          else if (ch === "," && !quoted) { cells.push(value.trim()); value = ""; }
+          else value += ch;
+        }
+        cells.push(value.trim()); return cells;
+      };
+      const headers = parseRow(lines[0]).map((h) => h.toLowerCase().trim().replace(/[ -]+/g, "_"));
+      const rows = lines.slice(1).map(parseRow).map((cells) => Object.fromEntries(headers.map((h, i) => [h, cells[i] || ""])))
+        .filter((row) => String(row.name || row.product_name || "").trim())
+        .map((row) => ({ name: row.name || row.product_name, sku: row.sku, category: row.category, brand: row.brand, model: row.model, unit_price: Number(row.unit_price || row.price || 0), currency: row.currency || "USD", datasheet_url: row.datasheet_url, image_url: row.image_url }));
+      if (!rows.length) throw new Error("No product rows with a name were found.");
+      const response = await fetch("/api/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ products: rows }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "CSV import failed.");
+      const refreshed = await fetch("/api/products").then((res) => res.json());
+      setCatalog(refreshed.products || []);
+      setCatalogError(`Imported or updated ${data.imported} product(s).`);
+    } catch (error) {
+      setCatalogError(error instanceof Error ? error.message : "CSV import failed.");
+    } finally { setCatalogBusy(false); }
+  }
+
   const panel = "rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-lg shadow-black/10";
   const button = "rounded-xl bg-cyan-400 px-4 py-2.5 font-semibold text-slate-950 transition hover:bg-cyan-300";
   const secondary = "rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-slate-200 hover:border-cyan-400";
@@ -234,9 +294,36 @@ export default function Home() {
           </section>
         </div>}
 
-        {section === "Products" && <div className="grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
-          <form onSubmit={addQuoteItem} className={panel}><h3 className="mb-4 text-xl font-bold">Add quotation item</h3><label className="mb-4 block text-sm text-slate-300">Product / service<input required value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g. 8-channel NVR" className="mt-2 w-full"/></label><Field label="Unit price" value={productPrice} onChange={setProductPrice} unit="USD" step={0.01}/><button className={`${button} mt-5`} type="submit">Add item</button></form>
-          <div className={panel}><div className="mb-4 flex items-center justify-between"><h3 className="text-xl font-bold">Quotation draft</h3><span className="text-lg font-bold text-cyan-300">${total.toFixed(2)}</span></div>{quoteItems.length === 0 ? <p className="text-sm text-slate-400">No items yet. Add products or services to start a quotation.</p> : <div className="space-y-3">{quoteItems.map((item, i) => <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-950 p-3"><div><p className="font-medium">{item.name}</p><p className="text-xs text-slate-400">Qty {item.qty} · ${item.price.toFixed(2)} each</p></div><div className="flex items-center gap-3"><strong>${(item.qty * item.price).toFixed(2)}</strong><button className="text-sm text-rose-300" onClick={() => setQuoteItems((current) => current.filter((_, index) => index !== i))}>Remove</button></div></div>)}</div>}<p className="mt-4 text-xs text-slate-500">Draft data is currently held in this browser session. Database saving and PDF export are planned for the next phase.</p></div>
+        {section === "Products" && <div className="space-y-5">
+          <div className="grid gap-5 lg:grid-cols-2">
+            <form onSubmit={saveCatalogProduct} className={panel}>
+              <div className="mb-4"><p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Product intelligence</p><h3 className="mt-1 text-xl font-bold">Add to product catalog</h3><p className="mt-1 text-sm text-slate-400">Save technical products for reuse in future project quotations.</p></div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-slate-300 sm:col-span-2">Product name<input required value={catalogName} onChange={(e) => setCatalogName(e.target.value)} className="mt-2 w-full" placeholder="e.g. 8MP IP Turret Camera"/></label>
+                <label className="text-sm text-slate-300">SKU<input value={catalogSku} onChange={(e) => setCatalogSku(e.target.value)} className="mt-2 w-full" placeholder="Optional unique code"/></label>
+                <label className="text-sm text-slate-300">Category<select value={catalogCategory} onChange={(e) => setCatalogCategory(e.target.value)} className="mt-2 w-full">{["CCTV","Alarm System","Network","Sound System","Smart Home","Solar","UPS","Battery","Accessories","Other"].map((v) => <option key={v}>{v}</option>)}</select></label>
+                <label className="text-sm text-slate-300">Brand<input value={catalogBrand} onChange={(e) => setCatalogBrand(e.target.value)} className="mt-2 w-full" placeholder="Brand"/></label>
+                <label className="text-sm text-slate-300">Model<input value={catalogModel} onChange={(e) => setCatalogModel(e.target.value)} className="mt-2 w-full" placeholder="Model number"/></label>
+                <div className="sm:col-span-2"><Field label="Unit price" value={catalogPrice} onChange={setCatalogPrice} unit="USD" step={0.01}/></div>
+              </div>
+              <button disabled={catalogBusy} className={`${button} mt-4 disabled:opacity-50`} type="submit">{catalogBusy ? "Saving…" : "Save product"}</button>
+            </form>
+            <div className={panel}>
+              <p className="text-xs font-bold uppercase tracking-widest text-cyan-300">Bulk import</p><h3 className="mt-1 text-xl font-bold">Import product CSV</h3>
+              <p className="mt-2 text-sm text-slate-400">Upload a CSV file with columns such as name, sku, category, brand, model, unit_price, currency, datasheet_url and image_url.</p>
+              <label className="mt-5 flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-cyan-700 bg-slate-950/70 p-7 text-center hover:border-cyan-400">
+                <span className="text-3xl">📥</span><span className="mt-2 font-semibold text-cyan-200">Choose CSV file</span><span className="mt-1 text-xs text-slate-500">Up to 500 products per import</span>
+                <input className="mt-3 max-w-full text-xs" type="file" accept=".csv,text/csv" disabled={catalogBusy} onChange={(e) => { void importProductCsv(e.target.files?.[0]); e.currentTarget.value = ""; }}/>
+              </label>
+              <p className="mt-3 text-xs text-slate-500">Matching SKU values update existing catalog records. Keep your source spreadsheet as the master copy.</p>
+            </div>
+          </div>
+          {catalogError && <p role="status" className="rounded-xl border border-cyan-900 bg-cyan-950/40 p-3 text-sm text-cyan-200">{catalogError}</p>}
+          <section className={panel}>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-xl font-bold">Product library</h3><p className="text-sm text-slate-400">{catalog.length} saved product(s)</p></div><button type="button" className={secondary} onClick={() => fetch("/api/products").then((r) => r.json()).then((d) => setCatalog(d.products || []))}>Refresh</button></div>
+            {catalog.length === 0 ? <p className="text-sm text-slate-400">No products yet. Add one manually or import your CSV product list.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="text-xs uppercase text-slate-500"><tr><th className="p-3">Product</th><th className="p-3">SKU</th><th className="p-3">Category</th><th className="p-3">Brand / Model</th><th className="p-3 text-right">Price</th><th className="p-3">Quote</th></tr></thead><tbody>{catalog.map((product) => <tr key={product.id} className="border-t border-slate-800"><td className="p-3 font-medium">{product.name}</td><td className="p-3 text-slate-400">{product.sku || "—"}</td><td className="p-3 text-slate-400">{product.category}</td><td className="p-3 text-slate-400">{[product.brand, product.model].filter(Boolean).join(" / ") || "—"}</td><td className="p-3 text-right tabular-nums">{product.currency} {Number(product.unit_price).toFixed(2)}</td><td className="p-3"><button type="button" className="text-cyan-300 hover:text-cyan-100" onClick={() => setQuoteItems((items) => [...items, { name: product.name, qty: 1, price: Number(product.unit_price) }])}>Add</button></td></tr>)}</tbody></table></div>}
+          </section>
+          <div className={panel}><div className="mb-4 flex items-center justify-between"><h3 className="text-xl font-bold">Quotation draft</h3><span className="text-lg font-bold text-cyan-300">${total.toFixed(2)}</span></div>{quoteItems.length === 0 ? <p className="text-sm text-slate-400">No items yet. Add products from the library or create a custom line.</p> : <div className="space-y-3">{quoteItems.map((item, i) => <div key={i} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-950 p-3"><div><p className="font-medium">{item.name}</p><p className="text-xs text-slate-400">Qty {item.qty} · ${item.price.toFixed(2)} each</p></div><div className="flex items-center gap-3"><strong>${(item.qty * item.price).toFixed(2)}</strong><button className="text-sm text-rose-300" onClick={() => setQuoteItems((current) => current.filter((_, index) => index !== i))}>Remove</button></div></div>)}</div>}<p className="mt-4 text-xs text-slate-500">Quotation lines are still session-only; saving quotations and PDF generation are a later phase.</p></div>
         </div>}
 
         {section === "Settings" && <div className={panel}><h3 className="mb-3 text-xl font-bold">Workspace settings</h3><p className="text-slate-300">PlanYar MVP · English interface · USD quotation currency</p><p className="mt-3 text-sm text-slate-400">Next phase: Kurdish Sorani, Arabic and English language switching, user accounts, team permissions and persistent PostgreSQL storage.</p></div>}
