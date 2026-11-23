@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Project = { id: number; name: string; client: string; system: string; status: string };
 type Module = { name: string; icon: string; desc: string };
+type PlacedDevice = { id: number; kind: string; x: number; y: number };
 
 const modules: Module[] = [
   { name: "CCTV", icon: "📹", desc: "Camera layout and coverage planning" },
@@ -16,7 +17,7 @@ const modules: Module[] = [
   { name: "Quotation", icon: "📄", desc: "Bill of quantities and quotations" },
 ];
 
-const navItems = ["Dashboard", "Projects", "Products", "Calculators", "Settings"];
+const navItems = ["Dashboard", "2D Design Studio", "Projects", "Products", "Calculators", "Settings"];
 
 function Field({ label, value, onChange, unit, min = 0, max, step = 1 }: {
   label: string; value: number; onChange: (value: number) => void; unit?: string; min?: number; max?: number; step?: number;
@@ -33,6 +34,9 @@ function Field({ label, value, onChange, unit, min = 0, max, step = 1 }: {
 export default function Home() {
   const [section, setSection] = useState("Dashboard");
   const [activeModule, setActiveModule] = useState("CCTV");
+  const [studioTool, setStudioTool] = useState("Camera");
+  const [placedDevices, setPlacedDevices] = useState<PlacedDevice[]>([]);
+  const [nextDeviceId, setNextDeviceId] = useState(1);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectError, setProjectError] = useState("");
@@ -77,6 +81,14 @@ export default function Home() {
   }, [dailyKwh, sunHours, losses, panelW]);
 
   const total = quoteItems.reduce((sum, item) => sum + item.qty * item.price, 0);
+
+  function placeStudioDevice(event: React.MouseEvent<SVGSVGElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(24, Math.min(876, ((event.clientX - bounds.left) / bounds.width) * 900));
+    const y = Math.max(24, Math.min(496, ((event.clientY - bounds.top) / bounds.height) * 520));
+    setPlacedDevices((items) => [...items, { id: nextDeviceId, kind: studioTool, x, y }]);
+    setNextDeviceId((id) => id + 1);
+  }
 
   async function addProject(e: React.FormEvent) {
     e.preventDefault();
@@ -139,6 +151,37 @@ export default function Home() {
             {modules.map((item) => <button key={item.name} onClick={() => { setActiveModule(item.name); setSection(item.name === "UPS Calculator" || item.name === "Solar System" ? "Calculators" : item.name === "Quotation" ? "Products" : "Projects"); }} className={`${panel} text-left transition hover:-translate-y-1 hover:border-cyan-500`}><div className="mb-4 text-3xl">{item.icon}</div><h4 className="font-bold">{item.name}</h4><p className="mt-2 text-sm text-slate-400">{item.desc}</p><p className="mt-4 text-xs font-semibold text-cyan-300">Open module →</p></button>)}
           </div>
         </>}
+
+        {section === "2D Design Studio" && <section className={panel}>
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div><p className="text-xs font-bold uppercase tracking-[.2em] text-cyan-300">PlanYar workspace</p><h3 className="mt-1 text-2xl font-bold">2D Design Studio</h3><p className="mt-1 text-sm text-slate-400">Choose a device, then tap the drawing area to place it</p></div>
+            <div className="flex flex-wrap gap-2">
+              {["Camera", "Wi-Fi AP", "Motion Sensor", "Door"].map((tool) => <button key={tool} type="button" onClick={() => setStudioTool(tool)} className={studioTool === tool ? button : secondary}>{tool}</button>)}
+            </div>
+          </div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400"><span>Selected tool: <strong className="text-cyan-300">{studioTool}</strong></span><span>{placedDevices.length} placed device(s)</span></div>
+          <div className="overflow-hidden rounded-2xl border border-slate-700 bg-[#080f1d]">
+            <svg viewBox="0 0 900 520" role="img" aria-label="Interactive 2D floor plan. Tap to place the selected device." onClick={placeStudioDevice} className="block h-auto w-full touch-manipulation" style={{ cursor: "crosshair" }}>
+              <defs><pattern id="plan-grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#233247" strokeWidth="1"/></pattern></defs>
+              <rect width="900" height="520" fill="url(#plan-grid)"/>
+              <rect x="110" y="75" width="680" height="370" fill="#0d1b2b" fillOpacity=".7" stroke="#94a3b8" strokeWidth="8"/>
+              <path d="M 450 75 V 245 M 110 260 H 450 M 450 245 H 790" stroke="#64748b" strokeWidth="7" fill="none"/>
+              <path d="M 450 245 A 70 70 0 0 1 520 315" stroke="#64748b" strokeWidth="2" fill="none" strokeDasharray="5 5"/>
+              <text x="280" y="165" fill="#94a3b8" fontSize="18" textAnchor="middle">ROOM 01</text>
+              <text x="620" y="165" fill="#94a3b8" fontSize="18" textAnchor="middle">ROOM 02</text>
+              <text x="280" y="355" fill="#94a3b8" fontSize="18" textAnchor="middle">ROOM 03</text>
+              <text x="620" y="355" fill="#94a3b8" fontSize="18" textAnchor="middle">ROOM 04</text>
+              {placedDevices.map((device) => <g key={device.id} transform={`translate(${device.x} ${device.y})`} pointerEvents="none">
+                <circle r="17" fill={device.kind === "Camera" ? "#083344" : device.kind === "Wi-Fi AP" ? "#312e81" : device.kind === "Door" ? "#713f12" : "#14532d"} stroke={device.kind === "Camera" ? "#22d3ee" : device.kind === "Wi-Fi AP" ? "#a5b4fc" : device.kind === "Door" ? "#fbbf24" : "#86efac"} strokeWidth="2"/>
+                <text y="5" textAnchor="middle" fontSize="15" fill="white">{device.kind === "Camera" ? "C" : device.kind === "Wi-Fi AP" ? "W" : device.kind === "Door" ? "D" : "M"}</text>
+                <text y="31" textAnchor="middle" fontSize="10" fill="#e2e8f0">{device.kind} #{device.id}</text>
+              </g>)}
+              <text x="450" y="500" fill="#64748b" fontSize="12" textAnchor="middle">TAP ANYWHERE INSIDE THE PLAN TO PLACE A DEVICE</text>
+            </svg>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2"><button type="button" className={secondary} onClick={() => setPlacedDevices((items) => items.slice(0, -1))} disabled={placedDevices.length === 0}>Undo last</button><button type="button" className={secondary} onClick={() => setPlacedDevices([])} disabled={placedDevices.length === 0}>Clear devices</button></div>
+          <p className="mt-3 text-xs leading-5 text-amber-300/80">Prototype drawing workspace: placements are currently held in this browser session and are not yet saved to a project. Scale calibration, PDF/DWG import, wall editing, cable routing and coverage calculations are future steps.</p>
+        </section>}
 
         {section === "Projects" && <div className="grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
           <form onSubmit={addProject} className={panel}>
