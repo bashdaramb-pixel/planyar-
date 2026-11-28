@@ -1054,7 +1054,7 @@ function load(text){let o;try{o=JSON.parse(text)}catch(e){return setSaved(false,
  const ok=n=>typeof n==="number"&&Number.isFinite(n),sys=k=>Object.prototype.hasOwnProperty.call(COL,k);
  const rooms=pl.rooms.filter(r=>r&&typeof r.id==="string"&&ok(r.xM)&&ok(r.yM)&&ok(r.widthM)&&ok(r.depthM)&&r.widthM>0&&r.depthM>0);
  const devices=pl.devices.filter(d=>d&&typeof d.id==="string"&&sys(d.system)&&ok(d.xM)&&ok(d.yM));
- if(!rooms.length)return setSaved(false,"هیچ ژوورێکی دروست نییە","لا توجد غرف صالحة","No valid rooms in file");
+
  const skipped=pl.devices.length-devices.length;
  plan.rooms=rooms;plan.devices=devices;plan.fixtures=(Array.isArray(pl.fixtures)?pl.fixtures:[]).filter(f=>f&&ok(f.xM)&&ok(f.yM)&&ok(f.widthM)&&ok(f.depthM)&&ok(f.heightM)&&ok(f.angleDeg));
  plan.routes=(Array.isArray(pl.routes)?pl.routes:[]).filter(r=>r&&sys(r.system)&&Array.isArray(r.points)&&r.points.every(p=>p&&ok(p.xM)&&ok(p.yM)));
@@ -1064,7 +1064,7 @@ function load(text){let o;try{o=JSON.parse(text)}catch(e){return setSaved(false,
  plan.floors=Array.isArray(pl.floors)&&pl.floors.length?pl.floors:plan.floors;
  if(pl.assumptions&&typeof pl.assumptions==="object")for(const k of Object.keys(plan.assumptions))if(pl.assumptions[k]&&typeof pl.assumptions[k]==="object")Object.assign(plan.assumptions[k],pl.assumptions[k]);
  const st=pl.site||{};const ti=PT.find(x=>x[0]===st.projectType)||PT[0];
- plan.site={projectType:ti[0],lengthM:ok(st.lengthM)&&st.lengthM>=1?st.lengthM:ti[4],widthM:ok(st.widthM)&&st.widthM>=1?st.widthM:ti[5],heightM:ok(st.heightM)&&st.heightM>=.5?st.heightM:ti[6],northAngleDeg:ok(st.northAngleDeg)?((st.northAngleDeg%360)+360)%360:0};
+ plan.site={projectType:ti[0],lengthM:ok(st.lengthM)&&st.lengthM>=0?st.lengthM:ti[4],widthM:ok(st.widthM)&&st.widthM>=0?st.widthM:ti[5],heightM:ok(st.heightM)&&st.heightM>=0?st.heightM:ti[6],northAngleDeg:ok(st.northAngleDeg)?((st.northAngleDeg%360)+360)%360:0};
  try{qi=[]}catch(e){}
  renderMeta();draw();calc();
  setSaved(true,skipped?`ئەپلۆد کرا؛ ${skipped} ئامێری ئەم پیشاندانە پشتگیری ناکرێت (ئەکسێس/تەلەفۆن...) تێپەڕێندران`:"پلانەکە ئەپلۆد کرا",skipped?`تم الرفع؛ تم تخطي ${skipped} جهاز غير مدعوم`:"تم رفع المخطط",skipped?`Uploaded; ${skipped} device(s) of unsupported types (access / telephone) were skipped`:"Plan uploaded")}
