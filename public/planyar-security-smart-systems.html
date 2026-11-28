@@ -1720,4 +1720,112 @@ svg.setAttribute("data-real-render","daylight cutaway");
 };
 draw();
 })();
-</script></body></html>
+</script>
+<style id="planyar-design-review-style">
+.py-review-open{border-color:#397084!important;color:#8fe0ec!important;background:#102a3a!important}
+.py-review-overlay{position:fixed;z-index:100000;inset:0;display:grid;place-items:center;padding:18px;background:#030912c9;backdrop-filter:blur(7px)}
+.py-review-overlay[hidden]{display:none}
+.py-review-dialog{width:min(900px,100%);max-height:min(88vh,900px);overflow:auto;padding:clamp(14px,2.2vw,24px);border:1px solid #35526b;border-radius:16px;background:linear-gradient(150deg,#102338,#091522 78%);color:#e3edf6;box-shadow:0 24px 90px #000b;outline:none}
+.py-review-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-bottom:12px;border-bottom:1px solid #263e55}
+.py-review-head small{color:#74cddd;font:700 9px ui-monospace,monospace;letter-spacing:.12em}
+.py-review-head h2{margin:4px 0;color:#f1f5f8;font-size:20px}
+.py-review-head p{max-width:680px;margin:0;color:#91a7bb;font-size:11px;line-height:1.7}
+.py-review-close{width:36px;height:36px;flex:0 0 auto;border:1px solid #38536c;border-radius:8px;color:#c9d7e3;background:#132b40;font-size:21px;cursor:pointer}
+.py-review-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:13px 0}
+.py-review-count{padding:10px;border:1px solid #2b4056;border-radius:9px;background:#0d1d2e}
+.py-review-count strong{display:block;font:700 20px ui-monospace,monospace}
+.py-review-count span{color:#9aafc1;font-size:9px}
+.py-review-count.is-error strong{color:#ff928c}.py-review-count.is-warning strong{color:#f4ce62}.py-review-count.is-info strong{color:#8cd8ec}
+.py-review-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:10px 0 12px}
+.py-review-actions button{min-height:34px;padding:6px 10px;border:1px solid #34516b;border-radius:7px;color:#d8e5ef;background:#122941;font:inherit;font-size:10px;cursor:pointer}
+.py-review-actions button:hover,.py-review-filters button[aria-pressed="true"]{border-color:#65c6d9;color:#9ce7ef;background:#123344}
+.py-review-filters{display:flex;flex-wrap:wrap;gap:5px;margin-inline-start:auto}
+.py-review-filters button{min-height:29px;padding:4px 8px;border:1px solid #31475c;border-radius:999px;color:#9db0c2;background:#0b1a29;font-size:9px;cursor:pointer}
+.py-review-disclaimer{width:100%;margin:0;color:#8197aa;font-size:9px;line-height:1.55}
+.py-review-list{display:grid;gap:7px}
+.py-review-item{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:start;gap:9px;padding:10px;border:1px solid #283e54;border-radius:9px;background:#0c1b2a}
+.py-review-item>i{width:7px;height:7px;margin-top:5px;border-radius:50%;background:#66d2e4;box-shadow:0 0 9px currentColor}
+.py-review-item[data-severity="error"]>i{color:#ff8177;background:#ff8177}.py-review-item[data-severity="warning"]>i{color:#edc64f;background:#edc64f}.py-review-item[data-severity="info"]>i{color:#68cfe1;background:#68cfe1}
+.py-review-item strong{display:block;color:#e4edf5;font-size:10px}
+.py-review-item p{margin:3px 0 0;color:#91a7bb;font-size:9px;line-height:1.6;overflow-wrap:anywhere}
+.py-review-item small{display:block;margin-top:4px;color:#7289a0;font:8px ui-monospace,monospace}
+.py-review-item button{align-self:center;min-height:30px;padding:5px 8px;border:1px solid #3a566f;border-radius:6px;color:#9de1ed;background:#11293b;font-size:9px;cursor:pointer;white-space:nowrap}
+.py-review-empty{padding:22px 12px;border:1px dashed #38546a;border-radius:10px;color:#b4d8d5;background:#0d211f;text-align:center;font-size:11px;line-height:1.7}
+@media(max-width:560px){.py-review-overlay{padding:8px}.py-review-dialog{max-height:94vh;border-radius:12px}.py-review-head h2{font-size:17px}.py-review-summary{gap:5px}.py-review-count{padding:8px}.py-review-item{grid-template-columns:7px minmax(0,1fr)}.py-review-item button{grid-column:2;justify-self:start}.py-review-filters{width:100%;margin:2px 0 0}.py-review-actions>button{flex:1}}
+</style>
+<script id="planyar-design-review-script">
+(()=>{
+  const $=id=>document.getElementById(id), tr=(ku,ar,en)=>({ku,ar,en})[lang]||en;
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const overlay=document.createElement('div');
+  overlay.id='py-review-overlay'; overlay.className='py-review-overlay'; overlay.hidden=true;
+  overlay.innerHTML=`<section class="py-review-dialog" role="dialog" aria-modal="true" aria-labelledby="py-review-title" tabindex="-1"><header class="py-review-head"><div><small>${tr('پشکنینی ناوەکیی پلان','مراجعة داخلية للمخطط','PLAN DATA REVIEW')}</small><h2 id="py-review-title">${tr('پێداچوونەوەی پلان','مراجعة المخطط','Plan review')}</h2><p>${tr('پشکنینێکی خێرا بۆ دۆزینەوەی داتای ناتەواو، تێکچوونی ژوورەکان و دانانی ئامێرەکان.','فحص سريع لاكتشاف البيانات الناقصة وتداخل الغرف ومواضع الأجهزة.','A quick check for incomplete data, overlapping rooms, and equipment placement.')}</p></div><button type="button" class="py-review-close" id="py-review-close" aria-label="${tr('داخستن','إغلاق','Close')}">×</button></header><div class="py-review-summary" id="py-review-summary"></div><div class="py-review-actions"><button type="button" id="py-review-run">↻ ${tr('پشکنینەوە','إعادة الفحص','Run review again')}</button><button type="button" id="py-review-export">⇩ ${tr('داگرتنی ڕاپۆرت CSV','تنزيل تقرير CSV','Download CSV report')}</button><div class="py-review-filters" role="group" aria-label="${tr('فلتەری پشکنین','تصفية النتائج','Review filters')}"><button type="button" data-review-filter="all" aria-pressed="true">${tr('هەموو','الكل','All')}</button><button type="button" data-review-filter="error" aria-pressed="false">${tr('گرنگ','مهم','Important')}</button><button type="button" data-review-filter="warning" aria-pressed="false">${tr('ئاگاداری','تحذيرات','Warnings')}</button><button type="button" data-review-filter="info" aria-pressed="false">${tr('زانیاری','معلومات','Info')}</button></div><p class="py-review-disclaimer">${tr('ئەم پشکنینانە تەنها یارمەتیی داتای پلانن؛ پەسەندکردنی کۆدی بیناسازی، پشکنینی مەیدانی یان بڕیاری ئەندازیاری نین.','هذه الفحوصات لمساعدة بيانات المخطط فقط؛ وليست اعتماداً للكود أو مسحاً ميدانياً أو حكماً هندسياً.','These checks assist with plan data only; they are not building-code approval, a site survey, or engineering sign-off.')}</p></div><div class="py-review-list" id="py-review-list" aria-live="polite"></div></section>`;
+  document.body.appendChild(overlay);
+  let findings=[],filter='all',returnFocus=null;
+  const floorKey=o=>o.floorId||plan.floors?.[0]?.id||'';
+  const floorLabel=id=>plan.floors?.find(f=>f.id===id)?.name||id||tr('بێ‌نهۆم','دون طابق','No floor');
+  const add=(severity,title,detail,meta={})=>findings.push({severity,title,detail,...meta});
+  function review(){
+    findings=[];
+    const floors=Array.isArray(plan.floors)?plan.floors:[],rooms=Array.isArray(plan.rooms)?plan.rooms:[],devices=Array.isArray(plan.devices)?plan.devices:[],fixtures=Array.isArray(plan.fixtures)?plan.fixtures:[],site=plan.site||{};
+    if(!floors.length)add('error',tr('هیچ نهۆمێک تۆمار نەکراوە','لا توجد طوابق مسجلة','No floors are recorded'),tr('نهۆمێک زیاد بکە پێش دانانی ژوور و ئامێر.','أضف طابقاً قبل وضع الغرف والأجهزة.','Add a floor before placing rooms and devices.'));
+    if(!rooms.length)add('error',tr('پلان هیچ ژوورێکی تێدا نییە','المخطط لا يحتوي غرفاً','The plan contains no rooms'),tr('بۆ دەستپێکردن ژوورێک لە نەخشە زیاد بکە.','أضف غرفة إلى المخطط للبدء.','Add a room to the plan to get started.'));
+    for(const floor of floors){
+      const onFloor=rooms.filter(r=>floorKey(r)===floor.id);
+      if(!onFloor.length)add('warning',tr('ئەم نهۆمە ژووری تۆمارکراوی نییە','هذا الطابق بلا غرف مسجلة','This floor has no recorded rooms'),tr('دڵنیابە ئەمە بە مەبەستە، یان ژوورەکانی پڕۆژە زیاد بکە.','تأكد أن ذلك مقصود أو أضف غرف المشروع.','Confirm this is intentional or add the floor’s rooms.'),{floorId:floor.id});
+    }
+    const L=Number(site.lengthM),W=Number(site.widthM);
+    for(const r of rooms){
+      const id=floorKey(r),x=Number(r.xM),y=Number(r.yM),w=Number(r.widthM),d=Number(r.depthM),ceiling=Number(r.ceilingHeightM)||Number(site.heightM)||2.8;
+      if(![x,y,w,d].every(Number.isFinite)||w<=0||d<=0){add('error',tr('ئەندازەی ژوور نادروستە','أبعاد الغرفة غير صالحة','Room dimensions are invalid'),`${r.name||r.id||''}: X=${r.xM}, Y=${r.yM}, ${tr('پانی','العرض','width')}=${r.widthM}, ${tr('قوڵایی','العمق','depth')}=${r.depthM}`,{floorId:id,entityType:'room',entityId:r.id});continue}
+      if(Number.isFinite(L)&&Number.isFinite(W)&&(x<-.02||y<-.02||x+w>L+.02||y+d>W+.02))add('warning',tr('ژوور لە چوارچێوەی شوێن دەرچووە','الغرفة تتجاوز حدود الموقع','Room extends beyond the site envelope'),`${r.name||r.id} · ${tr('نهۆم','طابق','floor')}: ${floorLabel(id)} · ${tr('قەبارەی شوێن','حدود الموقع','site envelope')}: ${L} × ${W} m`,{floorId:id,entityType:'room',entityId:r.id});
+      for(const o of (Array.isArray(r.openings)?r.openings:[])){
+        const wallLength=['north','south'].includes(o.side)?w:['east','west'].includes(o.side)?d:NaN,off=Number(o.offsetM),ow=Number(o.widthM),height=Number(o.heightM),sill=Number(o.sillHeightM)||0;
+        if(!Number.isFinite(wallLength)||!Number.isFinite(off)||!Number.isFinite(ow)||ow<=0||off<-.01||off+ow>wallLength+.01)add('error',tr('فتوحە لەسەر دیوار جێگای نابێتەوە','الفتحة لا تلائم الجدار','Opening does not fit its wall'),`${r.name||r.id} · ${o.kind||''} · ${o.side||'?'}`,{floorId:id,entityType:'room',entityId:r.id});
+        if(Number.isFinite(height)&&height>0&&sill+height>ceiling+.03)add('warning',tr('بەرزیی فتوحە لە بەرزیی سەقف زیاترە','ارتفاع الفتحة يتجاوز السقف','Opening rises above the ceiling'),`${r.name||r.id} · ${o.kind||''} · ${tr('کۆی بەرزی و بنکە','مجموع الارتفاع والعتبة','height plus sill')}: ${(sill+height).toFixed(2)} m · ${tr('سەقف','السقف','ceiling')}: ${ceiling} m`,{floorId:id,entityType:'room',entityId:r.id});
+      }
+    }
+    for(let i=0;i<rooms.length;i++)for(let j=i+1;j<rooms.length;j++){
+      const a=rooms[i],b=rooms[j];if(floorKey(a)!==floorKey(b))continue;
+      const overlapX=Math.min(Number(a.xM)+Number(a.widthM),Number(b.xM)+Number(b.widthM))-Math.max(Number(a.xM),Number(b.xM));
+      const overlapY=Math.min(Number(a.yM)+Number(a.depthM),Number(b.yM)+Number(b.depthM))-Math.max(Number(a.yM),Number(b.yM));
+      if(overlapX>.05&&overlapY>.05)add('error',tr('دوو ژوور لە یەک شوێندا تێکدەکەون','غرفتان متداخلتان','Two rooms overlap'),`${a.name||a.id} ↔ ${b.name||b.id} · ${overlapX.toFixed(2)} × ${overlapY.toFixed(2)} m · ${floorLabel(floorKey(a))}`,{floorId:floorKey(a),entityType:'room',entityId:a.id});
+    }
+    for(const r of rooms){
+      const os=(Array.isArray(r.openings)?r.openings:[]).filter(o=>['north','south','east','west'].includes(o.side));
+      for(let i=0;i<os.length;i++)for(let j=i+1;j<os.length;j++)if(os[i].side===os[j].side){const x1=Number(os[i].offsetM),x2=x1+Number(os[i].widthM),y1=Number(os[j].offsetM),y2=y1+Number(os[j].widthM);if(Math.min(x2,y2)-Math.max(x1,y1)>.01)add('warning',tr('دوو فتوحە لەسەر هەمان بەشی دیوار تێکدەکەون','فتحتان متداخلتان على الجدار نفسه','Two openings overlap on the same wall'),`${r.name||r.id} · ${os[i].side}`,{floorId:floorKey(r),entityType:'room',entityId:r.id})}
+    }
+    for(const [type,items] of [['device',devices],['fixture',fixtures]])for(const item of items){
+      const id=floorKey(item),floorRooms=rooms.filter(r=>floorKey(r)===id),x=Number(item.xM),y=Number(item.yM);
+      if(!floors.some(f=>f.id===id)){add('warning',tr('ئایتم بە نهۆمێکی نەناسراوەوە بەستراوە','العنصر مرتبط بطابق غير معروف','Item refers to an unknown floor'),`${item.label||item.kind||item.id} · ${id||'—'}`,{floorId:floors[0]?.id,entityType:type,entityId:item.id});continue}
+      if(!Number.isFinite(x)||!Number.isFinite(y)){add('error',tr('شوێنی ئایتم نادروستە','موضع العنصر غير صالح','Item coordinates are invalid'),`${item.label||item.kind||item.id}`,{floorId:id,entityType:type,entityId:item.id});continue}
+      const contains=r=>x>=Number(r.xM)-.12&&y>=Number(r.yM)-.12&&x<=Number(r.xM)+Number(r.widthM)+.12&&y<=Number(r.yM)+Number(r.depthM)+.12;
+      const assigned=floorRooms.find(r=>r.id===item.roomId),actual=floorRooms.find(contains),name=item.label||item.kind||item.id;
+      if(item.roomId&&!assigned)add('warning',tr('ئایتم ئاماژە بە ژوورێکی نەبوو دەکات','العنصر يشير إلى غرفة غير موجودة','Item refers to a missing room'),`${name} · ${item.roomId}`,{floorId:id,entityType:type,entityId:item.id});
+      else if(!actual)add('warning',tr('ناوەندی ئایتم لە ژوورێکدا نییە','مركز العنصر خارج الغرف','Item center is outside modeled rooms'),`${name} · ${tr('شوێنی دەرەوە لەوانەیە مەبەستدار بێت؛ تکایە پشتڕاستی بکەوە.','قد يكون الموضع الخارجي مقصوداً؛ يرجى التحقق.','Outdoor placement may be intentional; please confirm.')}`,{floorId:id,entityType:type,entityId:item.id});
+      else if(!assigned)add('info',tr('ژووری ئایتم دیاری نەکراوە','لم تُحدد غرفة للعنصر','Item has no assigned room'),`${name} · ${tr('لە','في','point falls in')} ${actual.name||actual.id}`,{floorId:id,entityType:type,entityId:item.id});
+      else if(!contains(assigned))add('warning',tr('ژووری ئایتم و شوێنی دانانی ناگونجێن','غرفة العنصر لا تطابق موضعه','Assigned room does not match placement'),`${name} · ${tr('تۆمارکراوە','المسجلة','assigned')}: ${assigned.name||assigned.id} · ${tr('لەسەر نەخشە','على المخطط','on plan')}: ${actual.name||actual.id}`,{floorId:id,entityType:type,entityId:item.id});
+    }
+    findings.sort((a,b)=>({error:0,warning:1,info:2}[a.severity]-({error:0,warning:1,info:2}[b.severity])));
+    render();
+  }
+  function render(){
+    const n={error:findings.filter(x=>x.severity==='error').length,warning:findings.filter(x=>x.severity==='warning').length,info:findings.filter(x=>x.severity==='info').length};
+    $('py-review-summary').innerHTML=`<div class="py-review-count is-error"><strong>${n.error}</strong><span>${tr('پێویستی بە سەرنجدان','تحتاج مراجعة','Needs attention')}</span></div><div class="py-review-count is-warning"><strong>${n.warning}</strong><span>${tr('ئاگاداری','تحذيرات','Warnings')}</span></div><div class="py-review-count is-info"><strong>${n.info}</strong><span>${tr('زانیاری','معلومات','Info')}</span></div>`;
+    const shown=filter==='all'?findings:findings.filter(x=>x.severity===filter),list=$('py-review-list');
+    list.innerHTML=shown.length?shown.map(x=>`<article class="py-review-item" data-severity="${x.severity}"><i aria-hidden="true"></i><div><strong>${esc(x.title)}</strong><p>${esc(x.detail)}</p><small>${x.floorId?`${tr('نهۆم','طابق','Floor')}: ${esc(floorLabel(x.floorId))} · `:''}${tr(x.severity==='error'?'گرنگ':x.severity==='warning'?'ئاگاداری':'تێبینی',x.severity==='error'?'مهم':x.severity==='warning'?'تحذير':'ملاحظة',x.severity==='error'?'Important':x.severity==='warning'?'Warning':'Note')}</small></div>${x.entityId?`<button type="button" data-review-go="${esc(x.entityType)}" data-review-id="${esc(x.entityId)}" data-review-floor="${esc(x.floorId||'')}">${tr('بینین لە پلان','عرض في المخطط','View in plan')}</button>`:x.floorId?`<button type="button" data-review-go="floor" data-review-floor="${esc(x.floorId)}">${tr('بینینی نهۆم','عرض الطابق','View floor')}</button>`:''}</article>`).join(''):`<div class="py-review-empty">${findings.length?tr('هیچ ئەنجامێک لەم فلتەرەدا نییە.','لا توجد نتائج ضمن هذا المرشح.','No findings match this filter.'):tr('هیچ کێشەیەکی داتای پلان لەم پشکنینانەدا نەدۆزرایەوە. ئەمە پەسەندکردنی کۆد یان ئەندازیاری نییە.','لم تُكتشف مشكلة في بيانات المخطط ضمن هذه الفحوصات. وهذا ليس اعتماداً هندسياً أو للكود.','No plan-data issues were found by these checks. This is not engineering or code approval.')}</div>`;
+    overlay.querySelectorAll('[data-review-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.reviewFilter===filter)));
+  }
+  function open(){returnFocus=document.activeElement;filter='all';review();overlay.hidden=false;$('py-review-dialog')?.focus()}
+  function close(){overlay.hidden=true;returnFocus?.focus?.()}
+  function goTo(button){const type=button.dataset.reviewGo,id=button.dataset.reviewId,floor=button.dataset.reviewFloor;if(floor&&plan.floors?.some(f=>f.id===floor))plan.activeFloorId=floor;overlay.hidden=true;if(type!=='floor'&&id)selItem={t:type,id};else if(typeof selItem!=='undefined')selItem=null;view='2d';if(typeof chrome==='function')chrome();if(typeof draw==='function')draw();if(typeof renderProps==='function')renderProps();$('plan')?.scrollIntoView({behavior:'smooth',block:'center'});}
+  function csvCell(value){let text=String(value??'');if(/^[=+\-@]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"'}
+  function exportCsv(){const header=[tr('ئاست','المستوى','Severity'),tr('پشکنین','الفحص','Check'),tr('وردەکاری','التفاصيل','Details'),tr('نهۆم','الطابق','Floor')],rows=findings.map(x=>[x.severity,x.title,x.detail,x.floorId?floorLabel(x.floorId):'']);const csv='\uFEFF'+[header,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=`planyar-plan-review-${new Date().toISOString().slice(0,10)}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+  $('py-review-close').onclick=close;$('py-review-run').onclick=review;$('py-review-export').onclick=exportCsv;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close();const f=e.target.closest('[data-review-filter]');if(f){filter=f.dataset.reviewFilter;render()}const g=e.target.closest('[data-review-go]');if(g)goTo(g)});
+  document.addEventListener('keydown',e=>{if(!overlay.hidden&&e.key==='Escape')close()});
+  function ensureButton(){const toolbar=$('py-toolbar'),anchor=$('py-workflow');if(!toolbar||!anchor)return;let b=$('py-review-open');if(!b){b=document.createElement('button');b.id='py-review-open';b.type='button';b.className='py-review-open';anchor.insertAdjacentElement('afterend',b)}b.textContent=`✓ ${tr('پێداچوونەوەی پلان','مراجعة المخطط','Plan review')}`;b.title=tr('پشکنینی خێرای داتای پلان','فحص سريع لبيانات المخطط','Run a quick check of plan data');b.onclick=open}
+  const priorChrome=chrome;chrome=function(){priorChrome();ensureButton()};chrome();ensureButton();
+})();
+</script>
+</body></html>
