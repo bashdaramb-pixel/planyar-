@@ -1601,4 +1601,30 @@ function imageFromURL(url){const img=new Image();img.onload=()=>putImage(img);im
 async function pdfToImage(file){try{if(!window.pdfjsLib){await new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";s.onload=resolve;s.onerror=reject;document.head.append(s)})}pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";const doc=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise,page=await doc.getPage(1),vp=page.getViewport({scale:2}),c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;imageFromURL(c.toDataURL("image/png"))}catch(e){const url=URL.createObjectURL(file),w=window.open(url,"_blank");if(!w)fail("PDF نەکرا بە وێنە بگۆڕدرێت؛ pop-up ڕێگەپێبدە یان PNG/JPG هەناردە بکە");else sayMap("PDF کراوەتەوە؛ بۆ خستنە ناو نەخشە PDF بکە بە PNG یان JPG","تم فتح PDF","PDF opened; export its first page as PNG/JPG to overlay it");setTimeout(()=>URL.revokeObjectURL(url),60000)}}
 input.onchange=async e=>{const f=e.target.files?.[0];input.value="";if(!f)return;if(f.size>50000000)return fail("قەبارەی فایل دەبێت کەمتر لە ٥٠MB بێت");if(/\.json$/i.test(f.name)||f.type==="application/json"){const t=await f.text();load(t);return}if(f.type==="application/pdf"||/\.pdf$/i.test(f.name)){pdfToImage(f);return}if(f.type.startsWith("image/")||/\.svg$/i.test(f.name)){imageFromURL(URL.createObjectURL(f));return}fail("جۆری فایل پشتگیری ناکرێت؛ PDF، SVG، وێنە یان JSON بەکاربهێنە")};
 })();
+</script><style id="py-project-manager-style">
+.py-project-switcher{display:flex;align-items:center;gap:6px}.py-project-switcher select,.py-project-switcher button{font:inherit;color:#dbe8f5;background:#10243a;border:1px solid #304b66;border-radius:6px;padding:7px 9px}.py-project-switcher button{cursor:pointer;border-color:#92762d;color:#f4d46b}.py-project-name{max-width:180px}
+@media(max-width:700px){.py-project-switcher{width:100%;justify-content:flex-end}.py-project-switcher select{max-width:55vw}}
+</style>
+<script id="py-project-manager-v1">
+(()=>{
+const STORE="planyar-projects-v1";let timer=0;let stored={};try{stored=JSON.parse(localStorage.getItem(STORE)||"{}")}catch(e){}
+let projects=Array.isArray(stored)?stored:(Array.isArray(stored.projects)?stored.projects:[]);let activeId=(!Array.isArray(stored)&&stored.activeId)||projects[0]?.id||"";
+function safeBundle(){try{return bundle()}catch(e){return""}}
+function persist(){if(!activeId)return;const p=projects.find(x=>x.id===activeId);if(!p)return;p.data=safeBundle();p.updatedAt=new Date().toISOString();try{localStorage.setItem(STORE,JSON.stringify({activeId,projects}))}catch(e){const el=$("saved");if(el){el.className="save-state";el.textContent="! شوێنی پاشەکەوت تەواوە؛ پڕۆژەکە دابەزێنە"}}}
+function projectTitle(){const t=PT.find(x=>x[0]===plan.site?.projectType)||PT[0];return t[1]}
+if(!projects.length){const id="project-"+Date.now();projects=[{id,name:projectTitle(),data:safeBundle(),updatedAt:new Date().toISOString()}];activeId=id}
+else if(!projects.some(p=>p.id===activeId))activeId=projects[0].id;
+const host=document.querySelector(".topbar-actions"),box=document.createElement("div");box.className="py-project-switcher";box.innerHTML='<select class="py-project-name" aria-label="پڕۆژە" title="پڕۆژە"></select><button type="button" id="py-new-project">＋ پڕۆژەی نوێ</button>';
+const unit=document.querySelector(".unit-switch");if(unit)unit.insertAdjacentElement("afterend",box);else host?.prepend(box);
+const select=box.querySelector("select");
+function render(){select.innerHTML=projects.map(p=>'<option value="'+p.id.replace(/"/g,"&quot;")+'">'+p.name.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</option>').join("");select.value=activeId}
+function resetPlan(data){for(const k of Object.keys(plan))delete plan[k];Object.assign(plan,P.createDefaultPlan());if(data)load(data);chrome();draw();calc()}
+const selectedProject=projects.find(p=>p.id===activeId);if(selectedProject?.data)resetPlan(selectedProject.data);persist();
+const saveOriginal=save;save=function(){saveOriginal();persist()};
+$("btn-save").onclick=save;
+const setSavedOriginal=setSaved;setSaved=function(ok,k,a,e){setSavedOriginal(ok,k,a,e);if(!ok){clearTimeout(timer);timer=setTimeout(persist,450)}};
+$("py-new-project").onclick=()=>{save();const defaultName="پڕۆژەی نوێ "+(projects.length+1),name=prompt("ناوی پڕۆژەی نوێ:",defaultName);if(name===null)return;const fresh=P.createDefaultPlan();for(const k of Object.keys(plan))delete plan[k];Object.assign(plan,fresh);activeId="project-"+Date.now();projects.push({id:activeId,name:name.trim()||defaultName,data:"",updatedAt:new Date().toISOString()});chrome();draw();calc();persist();render();setSaved(true,"پڕۆژەی نوێ دروست کرا","تم إنشاء مشروع جديد","New project created")};
+select.onchange=()=>{persist();const next=projects.find(p=>p.id===select.value);if(!next)return;activeId=next.id;resetPlan(next.data);render();persist();setSaved(true,"پڕۆژە بارکرا","تم تحميل المشروع","Project loaded")};
+render();
+})();
 </script></body></html>
