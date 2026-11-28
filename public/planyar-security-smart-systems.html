@@ -1623,7 +1623,7 @@ const selectedProject=projects.find(p=>p.id===activeId);if(selectedProject?.data
 const saveOriginal=save;save=function(){saveOriginal();persist()};
 $("btn-save").onclick=save;
 const setSavedOriginal=setSaved;setSaved=function(ok,k,a,e){setSavedOriginal(ok,k,a,e);if(!ok){clearTimeout(timer);timer=setTimeout(persist,450)}};
-$("py-new-project").onclick=()=>{save();const defaultName="پڕۆژەی نوێ "+(projects.length+1),name=prompt("ناوی پڕۆژەی نوێ:",defaultName);if(name===null)return;const fresh=P.createDefaultPlan();for(const k of Object.keys(plan))delete plan[k];Object.assign(plan,fresh);activeId="project-"+Date.now();projects.push({id:activeId,name:name.trim()||defaultName,data:"",updatedAt:new Date().toISOString()});chrome();draw();calc();persist();render();setSaved(true,"پڕۆژەی نوێ دروست کرا","تم إنشاء مشروع جديد","New project created")};
+$("py-new-project").onclick=()=>{save();const defaultName="پڕۆژەی نوێ "+(projects.length+1),name=prompt("ناوی پڕۆژەی نوێ:",defaultName);if(name===null)return;const fresh=P.createDefaultPlan();for(const k of Object.keys(plan))delete plan[k];Object.assign(plan,fresh);activeId="project-"+Date.now();projects.push({id:activeId,name:name.trim()||defaultName,data:"",updatedAt:new Date().toISOString()});chrome();draw();calc();persist();render();setSaved(true,"پڕۆژەی نوێ دروست کرا؛ لاپەڕە نوێ دەبێتەوە","تم إنشاء مشروع جديد؛ سيتم تحديث الصفحة","New project created; refreshing page");setTimeout(()=>location.reload(),150)};
 select.onchange=()=>{persist();const next=projects.find(p=>p.id===select.value);if(!next)return;activeId=next.id;resetPlan(next.data);render();persist();setSaved(true,"پڕۆژە بارکرا","تم تحميل المشروع","Project loaded")};
 render();
 })();
